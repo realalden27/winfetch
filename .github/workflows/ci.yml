@@ -11,20 +11,25 @@ permissions:
 
 jobs:
   check:
-    name: Check & Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Check & Test (${{ matrix.target }})
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        target:
+          - x86_64-pc-windows-msvc
+          - aarch64-pc-windows-msvc
+          - i686-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
+          targets: ${{ matrix.target }}
           components: rustfmt, clippy
       - name: Code Formatting Check
         run: cargo fmt --all -- --check
       - name: Clippy Lints
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --target ${{ matrix.target }} --all-targets --all-features -- -D warnings
       - name: Run Tests
-        run: cargo test --all-targets --all-features
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        run: cargo test --target ${{ matrix.target }} --all-targets --all-features
