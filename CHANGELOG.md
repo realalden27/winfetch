@@ -5,6 +5,19 @@ All notable changes to `winfetch` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-11-07
+
+### Added
+- Native Win32 `ENABLE_VIRTUAL_TERMINAL_PROCESSING` console mode initialization, enabling full ANSI and 24-bit TrueColor rendering in legacy Command Prompt / ConHost.
+- Authentic 4-color Windows logo palette (Red, Green, Blue, Yellow).
+- Multi-color category-based label coloring enabled by default.
+
+### Changed
+- Vertically centered the ASCII logo alongside the system specifications column.
+- Normalized secondary disk drive labels (`Disk (D:):`, `Disk (E:):`) for uniform alignment.
+- Aligned two-row ANSI terminal color swatches cleanly beneath system specs.
+- Streamlined CI workflow to validate Windows targets exclusively (`x86_64`, `aarch64`, `i686`).
+
 ## [0.1.1] - 2026-11-07
 
 ### Changed
