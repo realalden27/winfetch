@@ -9,8 +9,30 @@ use winfetch::ensure_in_path;
 use winfetch::ui::{FormatOptions, format_fetch};
 use winfetch::update::check_and_update;
 
+#[cfg(windows)]
+fn enable_vt_mode() {
+    use windows_sys::Win32::System::Console::{
+        GetConsoleMode, GetStdHandle, SetConsoleMode, ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+        STD_OUTPUT_HANDLE,
+    };
+
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if !handle.is_null() && handle != -1isize as *mut _ {
+            let mut mode = 0u32;
+            if GetConsoleMode(handle, &mut mode) != 0 {
+                let _ = SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn enable_vt_mode() {}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    enable_vt_mode();
     ensure_in_path();
 
     let cli = Cli::parse();
