@@ -36,7 +36,7 @@ pub struct Cli {
     pub only: Option<String>,
 
     /// Accent color theme for headers and labels
-    #[arg(short, long, value_enum, default_value_t = AccentColor::Cyan)]
+    #[arg(short, long, value_enum, default_value_t = AccentColor::Multi)]
     pub color: AccentColor,
 }
 

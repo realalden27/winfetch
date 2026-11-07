@@ -244,18 +244,32 @@ pub fn format_fetch(info: &SystemInfo, logo: &Logo, opts: &FormatOptions) -> Str
     }
 
     let mut output = String::new();
-    let total_rows = std::cmp::max(logo.lines.len(), spec_lines.len());
+    let top_offset = if spec_lines.len() > logo.lines.len() + 2 {
+        2
+    } else if spec_lines.len() > logo.lines.len() {
+        1
+    } else {
+        0
+    };
+    let total_rows = std::cmp::max(logo.lines.len() + top_offset, spec_lines.len());
     let logo_col_width = logo.width;
     let separator = "   ";
 
     for row in 0..total_rows {
         // Left Column (Logo)
-        let logo_line = logo.lines.get(row).map(|s| s.as_str()).unwrap_or("");
-        let visual_logo_len = strip_ansi(logo_line).chars().count();
-        let padding = " ".repeat(logo_col_width.saturating_sub(visual_logo_len));
+        let in_logo_range = row >= top_offset && (row - top_offset) < logo.lines.len();
+        if in_logo_range {
+            let logo_idx = row - top_offset;
+            let logo_line = logo.lines.get(logo_idx).map(|s| s.as_str()).unwrap_or("");
+            let visual_logo_len = strip_ansi(logo_line).chars().count();
+            let padding = " ".repeat(logo_col_width.saturating_sub(visual_logo_len));
 
-        output.push_str(logo_line);
-        output.push_str(&padding);
+            output.push_str(logo_line);
+            output.push_str(&padding);
+        } else {
+            let padding = " ".repeat(logo_col_width);
+            output.push_str(&padding);
+        }
         output.push_str(separator);
 
         // Right Column (Spec)
@@ -264,6 +278,11 @@ pub fn format_fetch(info: &SystemInfo, logo: &Logo, opts: &FormatOptions) -> Str
         }
 
         output.push('\n');
+    }
+
+    // Clean up trailing empty lines
+    while output.ends_with("\n\n") {
+        output.pop();
     }
 
     output
