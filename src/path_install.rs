@@ -2,6 +2,17 @@
 
 use std::path::{Path, PathBuf};
 
+/// Notification indicating whether `winfetch` was newly installed or upgraded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InstallNotice {
+    FirstRun(PathBuf),
+    Upgraded {
+        from: (u64, u64, u64),
+        to: String,
+        target: PathBuf,
+    },
+}
+
 /// Parses a semver version string into (major, minor, patch).
 #[must_use]
 pub fn parse_version(s: &str) -> Option<(u64, u64, u64)> {
@@ -58,31 +69,43 @@ fn read_binary_version(path: &Path) -> Option<(u64, u64, u64)> {
     }
 }
 
+fn copy_to_windows_apps(src: &Path) {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(local_appdata) = std::env::var_os("LOCALAPPDATA") {
+            let winapps_exe = PathBuf::from(local_appdata)
+                .join("Microsoft")
+                .join("WindowsApps")
+                .join("winfetch.exe");
+            let _ = std::fs::copy(src, winapps_exe);
+        }
+    }
+}
+
 /// Ensures `winfetch` is copied into the OS user programs directory and added to user PATH.
-pub fn ensure_in_path() {
+#[must_use]
+pub fn ensure_in_path() -> Option<InstallNotice> {
     if cfg!(test) {
-        return;
+        return None;
     }
 
     let Ok(current_exe) = std::env::current_exe() else {
-        return;
+        return None;
     };
 
     if is_dev_or_temp_binary(&current_exe) {
-        return;
+        return None;
     }
 
-    let Some(target_exe) = get_user_programs_exe() else {
-        return;
-    };
+    let target_exe = get_user_programs_exe()?;
 
     let Ok(canonical_current) = current_exe.canonicalize() else {
-        return;
+        return None;
     };
 
     if let Ok(canonical_target) = target_exe.canonicalize() {
         if canonical_current == canonical_target {
-            return;
+            return None;
         }
     }
 
@@ -92,7 +115,7 @@ pub fn ensure_in_path() {
     if target_exe.exists() {
         if let Some(installed_version) = read_binary_version(&target_exe) {
             if current_version <= installed_version {
-                return;
+                return None;
             }
 
             // Upgrade older installed binary
@@ -100,31 +123,29 @@ pub fn ensure_in_path() {
                 let _ = std::fs::create_dir_all(parent);
             }
             if std::fs::copy(&current_exe, &target_exe).is_ok() {
-                println!(
-                    "winfetch has been upgraded from v{}.{}.{} to v{} in:\n  {}",
-                    installed_version.0,
-                    installed_version.1,
-                    installed_version.2,
-                    current_version_str,
-                    target_exe.display()
-                );
+                copy_to_windows_apps(&current_exe);
+                return Some(InstallNotice::Upgraded {
+                    from: installed_version,
+                    to: current_version_str.to_string(),
+                    target: target_exe,
+                });
             }
-            return;
+            return None;
         }
     }
 
     // First-run installation
-    let Some(target_dir) = target_exe.parent() else {
-        return;
-    };
+    let target_dir = target_exe.parent()?;
 
     if std::fs::create_dir_all(target_dir).is_err() {
-        return;
+        return None;
     }
 
     if std::fs::copy(&current_exe, &target_exe).is_err() {
-        return;
+        return None;
     }
+
+    copy_to_windows_apps(&current_exe);
 
     #[cfg(target_os = "windows")]
     {
@@ -132,16 +153,13 @@ pub fn ensure_in_path() {
         register_windows_user_path(&target_dir_str);
     }
 
-    println!(
-        "winfetch has been installed to your user programs directory:\n  {}\nAdded to your User PATH. You can now run 'winfetch' from any terminal window!",
-        target_exe.display()
-    );
+    Some(InstallNotice::FirstRun(target_exe))
 }
 
 #[cfg(target_os = "windows")]
 fn register_windows_user_path(dir_to_add: &str) {
     let script = format!(
-        r"[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ';{dir_to_add}', 'User')"
+        r"$p = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($p -notlike '*{dir_to_add}*') {{ [Environment]::SetEnvironmentVariable('Path', ($p.TrimEnd(';') + ';{dir_to_add}'), 'User') }}"
     );
 
     let _ = std::process::Command::new("powershell")

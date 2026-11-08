@@ -59,5 +59,17 @@
       <ComponentRef Id="MainExecutable" />
       <ComponentRef Id="AppShortcut" />
     </Feature>
+
+    <!-- Post-installation: Automatically display winfetch and terminal usage guidance -->
+    <CustomAction
+      Id="LaunchPostInstall"
+      Directory="INSTALLFOLDER"
+      ExeCommand="cmd.exe /c start cmd.exe /c &quot;&quot;[INSTALLFOLDER]winfetch.exe&quot; --post-install&quot;"
+      Execute="immediate"
+      Return="asyncNoWait" />
+
+    <InstallExecuteSequence>
+      <Custom Action="LaunchPostInstall" After="InstallFinalize" Condition="NOT Installed AND NOT REMOVE" />
+    </InstallExecuteSequence>
   </Package>
 </Wix>

@@ -29,10 +29,19 @@ fn enable_vt_mode() {
 #[cfg(not(windows))]
 fn enable_vt_mode() {}
 
+fn pause_if_direct_launch(force_pause: bool) {
+    let ctx = winfetch::platform::process::detect_shell_and_terminal();
+    if force_pause || ctx.shell.is_none() {
+        println!("\nPress Enter to exit...");
+        let mut buf = String::new();
+        let _ = std::io::stdin().read_line(&mut buf);
+    }
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     enable_vt_mode();
-    ensure_in_path();
+    let install_notice = ensure_in_path();
 
     let cli = Cli::parse();
 
@@ -92,6 +101,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let elapsed = start_time.elapsed();
         let ms = elapsed.as_secs_f64() * 1000.0;
         println!("\nRendered in {ms:.2}ms");
+    }
+
+    if cli.post_install {
+        println!("\n\x1b[1;36m--------------------------------------------------------------------------------\x1b[0m");
+        println!(" \x1b[1mwinfetch has been installed successfully!\x1b[0m");
+        println!(
+            " You can now run '\x1b[1;32mwinfetch\x1b[0m' from any terminal (PowerShell, Command Prompt, or Windows Terminal)."
+        );
+        println!("\x1b[1;36m--------------------------------------------------------------------------------\x1b[0m");
+        pause_if_direct_launch(true);
+    } else if let Some(notice) = install_notice {
+        match notice {
+            winfetch::InstallNotice::FirstRun(path) => {
+                println!(
+                    "\n\x1b[1;36m--------------------------------------------------------------------------------\x1b[0m"
+                );
+                println!(" \x1b[1mwinfetch has been installed to your User PATH:\x1b[0m");
+                println!("   {}", path.display());
+                println!();
+                println!(
+                    " You can now run '\x1b[1;32mwinfetch\x1b[0m' from any terminal (PowerShell, Command Prompt, or Windows Terminal)!"
+                );
+                println!(
+                    "\x1b[1;36m--------------------------------------------------------------------------------\x1b[0m"
+                );
+            },
+            winfetch::InstallNotice::Upgraded { from, to, target } => {
+                println!(
+                    "\n\x1b[1;36m--------------------------------------------------------------------------------\x1b[0m"
+                );
+                println!(
+                    " winfetch has been upgraded from v{}.{}.{} to v{} in:",
+                    from.0, from.1, from.2, to
+                );
+                println!("   {}", target.display());
+                println!(
+                    "\x1b[1;36m--------------------------------------------------------------------------------\x1b[0m"
+                );
+            },
+        }
+        pause_if_direct_launch(false);
+    } else {
+        pause_if_direct_launch(false);
     }
 
     Ok(())

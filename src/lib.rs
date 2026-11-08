@@ -7,4 +7,4 @@ pub mod ui;
 pub mod update;
 
 pub use config::Cli;
-pub use path_install::ensure_in_path;
+pub use path_install::{InstallNotice, ensure_in_path};

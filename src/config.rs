@@ -38,6 +38,10 @@ pub struct Cli {
     /// Accent color theme for headers and labels
     #[arg(short, long, value_enum, default_value_t = AccentColor::Multi)]
     pub color: AccentColor,
+
+    /// Internal post-installation trigger displaying welcome banner and holding window open
+    #[arg(long, hide = true)]
+    pub post_install: bool,
 }
 
 #[derive(Subcommand, Debug)]
