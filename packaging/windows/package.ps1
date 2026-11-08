@@ -3,13 +3,14 @@ param(
     [string]$Version = "",
     [string]$AppName = "",
     [string]$AppTitle = "",
+    [string]$AppDescription = "",
     [string]$Manufacturer = "",
     [string]$UpgradeCode = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
 )
 
 $ErrorActionPreference = "Stop"
 
-if (-not $AppName -or -not $Version) {
+if (-not $AppName -or -not $Version -or -not $AppDescription) {
     if (Test-Path "Cargo.toml") {
         $content = Get-Content "Cargo.toml" -Raw
         if (-not $AppName -and $content -match 'name\s*=\s*"([^"]+)"') {
@@ -18,11 +19,17 @@ if (-not $AppName -or -not $Version) {
         if (-not $Version -and $content -match 'version\s*=\s*"([^"]+)"') {
             $Version = $matches[1]
         }
+        if (-not $AppDescription -and $content -match 'description\s*=\s*"([^"]+)"') {
+            $AppDescription = $matches[1]
+        }
     }
 }
 
 if (-not $AppTitle) {
     $AppTitle = $AppName
+}
+if (-not $AppDescription) {
+    $AppDescription = "$AppTitle application"
 }
 if (-not $Manufacturer) {
     $Manufacturer = $AppName
@@ -63,6 +70,7 @@ wix build `
     -arch $Arch `
     -d AppName="$AppName" `
     -d AppTitle="$AppTitle" `
+    -d AppDescription="$AppDescription" `
     -d Manufacturer="$Manufacturer" `
     -d Version="$Version" `
     -d UpgradeCode="$UpgradeCode" `
